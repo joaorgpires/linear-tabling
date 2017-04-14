@@ -6,23 +6,23 @@
 %%%    626
 %%% Possible program transformation:
 %%%
-%%%    samegen(X,Z) :- 
-%%%       tabled_call(samegen(X,Z),SgId,samegen_table(SgId,X,Z)).
+    samegen(X,Z) :-
+       tabled_call(samegen(X,Z),SgId,samegen_table(SgId,X,Z)).
 %%%
-%%%    samegen_table(SgId,X,Z) :- 
-%%%       cylinder(X,Y),
-%%%       samegen(Y,W),
-%%%       cylinder(Z,W),
-%%%       new_answer(SgId,samegen(X,Z)).
-%%%    samegen_table(SgId,X,X) :- 
-%%%       new_answer(SgId,samegen(X,X)).
+    samegen_table(SgId,X,Z) :-
+       cylinder(X,Y),
+       samegen(Y,W),
+       cylinder(Z,W),
+       new_answer(SgId,samegen(X,Z)).
+    samegen_table(SgId,X,X) :-
+       new_answer(SgId,samegen(X,X)).
 %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- table samegen/2.
+%:- table samegen/2.
 
-samegen(X,Z) :- cylinder(X,Y), samegen(Y,W), cylinder(Z,W).
-samegen(X,X).
+%samegen(X,Z) :- cylinder(X,Y), samegen(Y,W), cylinder(Z,W).
+%samegen(X,X).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

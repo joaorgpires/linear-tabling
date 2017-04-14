@@ -1,28 +1,28 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%
 %%% Program:
-%%%    Path definition with right recursion in a 4x4 grid 
+%%%    Path definition with right recursion in a 4x4 grid
 %%% Number of answers for the query '?- rpath(X,Z).':
 %%%    256
 %%% Possible program transformation:
 %%%
-%%%    rpath(X,Z) :- 
-%%%       tabled_call(rpath(X,Z),SgId,rpath_table(SgId,X,Z)).
+    rpath(X,Z) :-
+       tabled_call(rpath(X,Z),SgId,rpath_table(SgId,X,Z)).
 %%%
-%%%    rpath_table(SgId,X,Z) :- 
-%%%       edge(X,Z), 
-%%%       new_answer(SgId,rpath(X,Z)).
-%%%    rpath_table(SgId,X,Z) :- 
-%%%       edge(X,Y), 
-%%%       rpath(Y,Z), 
-%%%       new_answer(SgId,rpath(X,Z)).
-%%% 
+    rpath_table(SgId,X,Z) :-
+       edge(X,Z),
+       new_answer(SgId,rpath(X,Z)).
+    rpath_table(SgId,X,Z) :-
+       edge(X,Y),
+       rpath(Y,Z),
+       new_answer(SgId,rpath(X,Z)).
+%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- table rpath/2.
+%:- table rpath/2.
 
-rpath(X,Z) :- edge(X,Z).
-rpath(X,Z) :- edge(X,Y), rpath(Y,Z).
+%rpath(X,Z) :- edge(X,Z).
+%rpath(X,Z) :- edge(X,Y), rpath(Y,Z).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
