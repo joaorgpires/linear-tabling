@@ -88,7 +88,7 @@ exec_call(_, _, _, _, true) :- %Mark everything as complete so we do not recompu
   complete_db(dummy),
   fail.
 
-exec_call(OrCall, SgId, _, _, _) :- %Simply return all solutions
+exec_call(OrCall, SgId, _, _, LeaderFlag) :- %Simply return all solutions
   trie_traverse(SgId, Ref),
   trie_get_entry(Ref, OrCall).
 
