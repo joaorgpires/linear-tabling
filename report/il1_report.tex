@@ -1,0 +1,183 @@
+%----------------------------------------------------------------------------------------
+%	CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[12pt,a4paper,oneside]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage[colorlinks=true, citecolor=blue, linkcolor=black]{hyperref}
+%\usepackage{graphicx}
+\usepackage{tabu}
+% \usepackage{natbiba}
+\usepackage{amsmath}
+\usepackage{caption}
+%\usepackage{subcaption}
+%\graphicspath{ {images/} }
+\usepackage[a4paper,left=2cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+\setcounter{section}{-1}
+
+
+
+%----------------------------------------------------------------------------------------
+%	INFORMATION
+%----------------------------------------------------------------------------------------
+
+\title{Implementação de Linguagens - Trabalho I}
+
+\author{João Rebelo Pires\footnote{João Rebelo Pires - 201200384}}
+
+\date{DCC - FCUP, Abril 2017}
+
+\begin{document}
+
+\maketitle
+
+%-------------------------------------------------------
+%	SECTION 0
+%-------------------------------------------------------
+
+\section{Como Compilar e Ficheiros Disponíveis}\label{sec:readme}
+
+Nesta secção, pretendemos simplesmente inteirar o leitor sobre os ficheiros usados na implementação do algoritmo e sobre como compilar o código.
+
+\subsection{Ficheiros de \textit{Input}}\label{subsec:input_descrip}
+
+Na pasta \texttt{source} é possível encontrar 4 ficheiros: \texttt{lpath.yap}, \texttt{rpath.yap}, \texttt{samegen.yap} e \texttt{tabling.yap}. Os três primeiros são os ficheiros que contêm os três programas tabulados (que foram dados pelo professor nos exemplos, com o código já transformado. O último contém a implementação proposta para a tabulação.
+
+\subsection{Compilação}\label{subsec:compile}
+
+Após inicializar o \texttt{Yap} numa linha de comandos, para compilar e carregar o ficheiro com a implementação proposta basta correr o seguinte comando (já na consola do Yap):
+
+\texttt{[tabling].}.
+
+De seguida, dever-se-á executar uma linha semelhante para cada um dos ficheiros de teste, por exemplo:
+
+\texttt{[lpath].},\\
+para o caso de o ficheiro escolhido ser \texttt{lpath.yap}.
+
+%-------------------------------------------------------
+%	SECTION 1
+%-------------------------------------------------------
+
+\section{Introdução}\label{sec:intro}
+
+Programação Lógica é um paradigma de programação baseado na Lógica de Cláusulas de Horn, um subconjunto da Lógica de Primeira Ordem. O \textit{Prolog} é uma linguagem de programação baseada na resolução SLD (\textit{Selective Linear Definite resolution}), um sistema de inferência de cláusulas deste tipo.
+
+Apesar do poder, da flexibilidade e dos bons resultados que o \textit{Prolog} tem demonstrado desde o aparecimento da WAM (\textit{Warren's Abstract Machine}), a estratégia de resolução SLD é limitadora do potencial inerente ao paradigma da Programação Lógica.
+
+A resolução SLD não consegue tratar devidamente:
+
+\begin{itemize}
+	\item \textbf{Ciclos positivos infinitos} (expressividade insuficiente);
+	\item \textbf{Ciclos negativos infinitos} (inconsistência);
+	\item \textbf{Computações redundantes} (ineficiência).
+\end{itemize}
+
+Uma das mais bem sucedidas técnicas para solucionar a incapacidade da resolução SLD no que respeita aos problemas referidos é a \textbf{Tabulação}.
+
+A ideia básica da tabulação consiste em ir guardando numa área auxiliar, uma tabela, as soluções intermédias encontradas para determinar objectivos, para que estas possam ser reutilizadas assim que surgirem chamadas repetidas a esses mesmos objectivos.
+
+Neste trabalho procuramos implementar uma estratégia de tabulação através da extensão das capacidades do \textbf{Prolog} de forma a incluir primitivas de tabulação.
+
+%-------------------------------------------------------
+%	SECTION 2
+%-------------------------------------------------------
+
+\section{Implementação}\label{sec:implem}
+
+Nesta secção apresentamos uma descrição da implementação proposta.
+
+O método que implementamos é o método de tabulação linear com \textit{local scheduling}. Este método consiste em reavaliar as computações tabeladas até atingir um ponto fixo.
+
+Um conjunto de objectivos pode ser mutuamente dependente, ou seja, pertencer a uma SCC (\textit{Strongly Connected Component}), e nesse caso só pode ser completo em simultâneo. A estratégia de \textit{linear scheduling} tem como principal objectivo \textbf{completar SCCs o mais cedo possível}. Esta estratégia favorece retroceder para nós interiores e completar primeiro, consumir soluções depois e \textit{forward execution} por último.
+
+Quando surgem novas soluções, estas são guardadas na tabela e a execução falha. As soluções só são propagadas para fora do ambiente da SCC quando esta estiver completa.
+
+Como esta estratégia completa SCCs mais cedo, em princípio, são esperadas menos dependências entre os objectivos e, consequentemente, SCCs menores.
+
+Podemos considerar duas grandes componentes neste processo: a componente que implementa as transformações do código fonte e a componente que implementa as primitivas para tabulação. Para este trabalho, vamos considerar que os programas estão já re-escritos da forma pretendida, e apenas consideraremos a segunda componente.
+
+\subsection{Descrição da Implementação}\label{subsec:descrip}
+
+O algoritmo a ser implementado é de tabulação linear com \textit{local scheduling}, tal como foi referido previamente. Definimos o líder do SCC como sendo a chamada original da \textit{query}. Este líder é responsável por determinar se é necessário realizar um novo ciclo de computação e por devolver as soluções.
+
+Para guardar os termos (tanto chamadas como soluções) faremos uso de uma estrutra de dados que permite procuras em tempo "útil", denominada de \textit{trie}, que é nada mais, nada menos, que uma árvore de prefixos. Cada termo será decomposto em átomos, sendo que os termos com um prefixo comum nesta decomposição irão partilhar parte do caminho na \textit{trie}.
+
+Para as chamadas, utilizaremos uma \textit{trie} global, a \texttt{GoalTable}, que tem como termo global \texttt{globalGoalTable}. Cada chamada, por sua vez, terá uma \texttt{trie} de sub-soluções, determinada pela variável \texttt{SgId} (\textit{sub-goal id}), um índice que identifica cada chamada. Os termos globais \texttt{new\_answers} e \texttt{sccLeader} servem, como os nomes indicam, para determinar se há novas soluções e para marcar o líder da SCC, respectivamente. Estas variáveis são inicializadas (e a \textit{trie} aberta) através do predicado \texttt{init\_tabling}.
+
+Utilizaremos ainda uma tabela para guardar, para cada chamada, a sua referência na \textit{trie} global, o seu \texttt{SgId} e o seu estado: 
+
+\begin{itemize}
+	\item \textbf{new} significa que a chamada ainda não foi executada no ciclo de computação corrente;
+	\item \textbf{rep} significa que a chamada é repetida mas ainda não é final;
+	\item \textbf{comp} significa que a tabela que guarda esta chamada já é final.
+\end{itemize}
+
+O primeiro predicado é o \texttt{tabled\_call/3}, que inicia a computação. Este predicado começa por avaliar se a chamada já existe na \textit{trie} global, através do predicado \texttt{exists\_entry/3} e, em caso negativo, adiciona esta nova entrada; por outro lado, em caso afirmativo, o predicado \texttt{update\_db/1} marca as chamadas previamente marcadas como novas como repetidas. Através do predicado \texttt{set\_leader/1} verificamos se já existe líder para esta chamada e, caso não exista, marcamo-la. Segue-se o predicado \texttt{exec\_call/5}, que será discutido ao pormenor mais à frente, mas que executa de facto a chamada, no caso de a chamada ser nova. No final, desmarcamos o líder marcado previamente através do predicado \texttt{reset\_leader/1}, permitindo assim serem tabulados outros predicados.
+
+O predicado \texttt{exec\_call/5} apresenta, então, 4 operações distintas. A primeira, tal como referido, dá início à computação no caso de a chamada ser nova, executando a chamada transformada. Como a estratégia é de \textit{local scheduling}, esta chamada irá falhar sempre. A segunda operação, por sua vez, é executada no caso de o líder ser a chamada corrente e haver soluções novas, por forma a preparar tudo para um novo ciclo de computação, utilizando o predicado \texttt{prepare\_new\_loop/3}, que por sua vez faz uso do predicado \texttt{reset\_db/1} para marcar todas as entradas que estavam marcadas como \texttt{rep} como \texttt{new}, marcando a \textit{flag} de novas resposta como \texttt{false}, e executando, de seguida, uma chamada ao predicado \texttt{exec\_call/5} para dar início ao novo ciclo de computação. A terceira chamada é executada no caso de o líder ser a chamada actual, e serve simplesmente para marcar tudo completo, através do predicado \texttt{complete\_db/1}. Por fim, a quarta chamada, devolve as soluções, iterando pela \textit{trie} de soluções da chamada corrente.
+
+O predicado \texttt{new\_answer/2} é utilizado para adicionar novas soluções à \textit{trie} de soluções. A forma como funciona é algo análoga a \texttt{tabled\_call/3}.
+
+Os predicados \texttt{enum\_calls/1}, \texttt{enum\_subsolutions/1} e \texttt{count\_solutions/2} servem para contar o número de chamadas, sub-soluções e soluções, respectivamente, e são utilizados apenas para discussão de resultados, como poderemos ver na Secção \ref{sec:finit}.
+
+%-------------------------------------------------------
+%	SECTION 3
+%-------------------------------------------------------
+
+\section{Discussão de Resultados e Conclusões Finais}\label{sec:finit}
+
+Os resultados obtidos podem ser observados na Tabela \ref{tab:results} e, embora estejam próximos da realidade, não são exactamente os esperados. Em cada linha podemos observar o número de de soluções, chamadas, sub-soluções e tempo de execução, para cada um dos testes.
+
+Para determinar o número de soluções, foi executada a seguinte linha, tomando como exemplo o caso de \texttt{lpath}:
+
+\texttt{count\_solutions(lpath(X,Y), Count).}.\\
+
+Para o número de chamadas, a seguinte linha:
+
+\texttt{count\_solutions(enum\_calls(lpath(X,Y)), Count).}.\\
+
+Para o número de sub-soluções, a seguinte linha:
+
+\texttt{count\_solutions(enum\_subsolutions(lpath(X,Y)), Count).}.\\
+
+Para o tempo de execução, foi utilizado o \texttt{statistics/2}, do \texttt{SWI-Prolog}:
+
+\texttt{statistics(walltime, [TimeSinceStart | [TimeSinceLastCall]]),}
+
+  \texttt{lpath(X,Y),}
+
+  \texttt{statistics(walltime, [NewTimeSinceStart | [ExecutionTime]]),}
+
+  \texttt{write('Execution took '), write(ExecutionTime), write(' ms.'), nl.}.
+
+Observamos que, para \texttt{lpath} e \texttt{rpath} os resultados foram os esperados. Quanto ao caso de \texttt{samegen}, tal como já tínhamos apontado, o resultado é de 14 soluções a menos que o esperado.
+
+Não foi possível identificar o erro que provocou isto, pelo que não foi possível corrigi-lo. Contudo, é claro que haverá algum \textit{bug} "escondido", que faz com que a implementação não funcione e falhe nesse caso.
+
+Os tempos de execução são, também, bastante "simpáticos", o que é um ponto positivo.
+
+\begin{table}
+	\centering
+	\begin{tabu}{|[1.5pt]l|[1.5pt]c|c|c|c|[1.5pt]}
+		\tabucline[1.5pt]{-}
+		& Soluções & Chamadas & Sub-soluções & Tempo \\
+		\tabucline[1.5pt]{-}
+		\texttt{lpath} & 84 & 1 & 84 & 0.000 s \\ \hline
+		\texttt{rpath} & 256 & 17 & 512 & 0.001 s \\ \hline
+		\texttt{samegen} & 612 & 21 & 1 034 & 0.002 s \\ \tabucline[1.5pt]{-}
+	\end{tabu}
+	\caption{Resultados.}
+	\label{tab:results}
+\end{table}
+
+Em termos de dificuldades ao nível da implementação, prenderam-se com a falta de experiência em programação em \texttt{Prolog}, que foi compensada por um investimento grande na procura de informação relativa a esta linguagem, por forma a colmatar esta inexperiência.
+
+Os resultados obtidos foram, contudo, efectuados com testes, digamos, "pequenos", pelo que também não se podem tirar muitas conclusões sobre eficiência da implementação. Quanto à correcção, não há mais nada a acrescentar para além do que já foi referido.
+
+
+
+
+
+\end{document}
