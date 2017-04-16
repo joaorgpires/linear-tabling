@@ -26,8 +26,6 @@ init_tabling :-
 
 %Call for tabling a term
 tabled_call(OrCall, SgId, TrCall) :-
-  writeln('Tabled Call:'),
-  writeln(OrCall),
   exists_entry(OrCall, SgId, EntryType),
   set_leader(LeaderFlag),
   exec_call(OrCall, SgId, TrCall, EntryType, LeaderFlag),
@@ -76,17 +74,15 @@ reset_leader(false).
 
 
 %%%Executes the actual predicate if it is a new call
-exec_call(OrCall, _, TrCall, new, _) :- writeln('Call:'), writeln(OrCall), call(TrCall). %Simply call the transformed call
+exec_call(OrCall, _, TrCall, new, _) :- call(TrCall). %Simply call the transformed call
 
 exec_call(OrCall, SgId, TrCall, new, true) :- %If we have new answers, prepare for new computation loop
   get_value(new_answers, true), %It was set true by new_answer, that is, the transformed call
-  writeln('Testing loop for'),
-  writeln(OrCall),
   prepare_new_loop(OrCall, SgId, TrCall).
 
 exec_call(_, _, _, _, true) :- %Mark everything as complete so we do not recompute them
   complete_db(dummy),
-  fail.
+  fail. %We don't want this to return anything
 
 exec_call(OrCall, SgId, _, _, LeaderFlag) :- %Simply return all solutions
   trie_traverse(SgId, Ref),
@@ -98,7 +94,6 @@ prepare_new_loop(OrCall, SgId, TrCall) :-
   !, %We can stop recursion
   reset_db(dummy),
   set_value(new_answers, false),
-  writeln('Redoing loop'),
   exec_call(OrCall, SgId, TrCall, new, true),
   fail.
 
@@ -108,7 +103,7 @@ reset_db(dummy) :-
   recorded(db_answers, [Ref, SgId, rep], DbRef),
   erase(DbRef),
   recorda(db_answers, [Ref, SgId, new], _), %Set everything to new
-  fail.
+  fail. %We don't want this to return anything
 
 reset_db(_).
 
@@ -118,7 +113,7 @@ complete_db(dummy) :-
   recorded(db_answers, [Ref, SgId, _], DbRef),
   erase(DbRef),
   recorda(db_answers, [Ref, SgId, comp], _),
-  fail.
+  fail. %We don't want this to return anything
 
 complete_db(_).
 
@@ -149,15 +144,10 @@ exists_answer(_, _, EntryType) :- EntryType = new.
 %%%Adds a new answer if it does not exist in current subgoal trie
 add_answer(OrCall, SgId, new) :-
   trie_put_entry(SgId, OrCall, _),
-  writeln('New answer'),
-  writeln(SgId),
-  writeln(OrCall),
   set_value(new_answers, true).
 
 
-add_answer(OrCall, _, rep) :-
-  writeln('Repeated answer'),
-  writeln(OrCall).
+add_answer(OrCall, _, rep).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -168,16 +158,25 @@ add_answer(OrCall, _, rep) :-
 
 
 %%%Enumerates all calls to OrCall
-enum_calls(OrCall) :- recorded(db_answers, [Ref, _, _], _),
-                        trie_get_entry(Ref, OrCall).
+enum_calls(OrCall) :-
+  recorded(db_answers, [Ref, _, _], _),
+  trie_get_entry(Ref, OrCall).
 
 
-%%%Enumerates all solutions found
-enum_solutions(OrCall) :- recorded(db_answers, [_, SgId, _], _),
-                       trie_traverse(SgId, Ref),
-                       trie_get_entry(Ref, OrCall).
+%%%Enumerates all subsolutions found
+enum_subsolutions(OrCall) :-
+  recorded(db_answers, [_, SgId, _], _),
+  trie_traverse(SgId, Ref),
+  trie_get_entry(Ref, OrCall).
 
 
-%%%Counts number of diferent solutions (used to test correctness)
-count_calls(OrCall, Count) :- findall(1, OrCall, L),
-                               length(L, Count).
+%%%Counts number of diferent solutions
+count_solutions(OrCall, Count) :-
+  findall(1, OrCall, L),
+  length(L, Count).
+
+%%%Timing
+%statistics(walltime, [TimeSinceStart | [TimeSinceLastCall]]),
+%  lpath(X,Y),
+%  statistics(walltime, [NewTimeSinceStart | [ExecutionTime]]),
+%  write('Execution took '), write(ExecutionTime), write(' ms.'), nl.
